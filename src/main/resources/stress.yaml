@@ -1,0 +1,19 @@
+CREATE KEYSPACE exactlyonce WITH replication = {'class': 'SimpleStrategy', 'replication_factor': 1};
+# Warning: the partition size may increase if you increase TTL. Add an artificial bucket if needed.
+create table exactlyonce.position_history (
+  application_id text,
+  topic_id text,
+  date timeuuid,
+  offset_ranges text,
+  positions text,
+  position text,
+  primary key ((application_id, topic_id), date))
+  WITH CLUSTERING ORDER BY (date DESC) AND
+  default_time_to_live=604800 ;
+
+create table exactlyonce.position (
+  application_id text,
+  topic_id text,
+  offset_ranges text,
+  position text,
+  primary key ((application_id, topic_id))) ;

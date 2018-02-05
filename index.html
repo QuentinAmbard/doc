@@ -1,7 +1,109 @@
-<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
-<script src="https://code.jquery.com/jquery-3.2.1.slim.min.js" integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN" crossorigin="anonymous"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js" integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q" crossorigin="anonymous"></script>
-<script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous"></script>
-<h1>spark</h1>
+<link rel="stylesheet" href="./js/bootstrap.min.css"
+      integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
+<script src="./js/jquery-3.2.1.slim.min.js"
+        integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN"
+        crossorigin="anonymous"></script>
+<script src="./js/popper.min.js" integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q"
+        crossorigin="anonymous"></script>
+<script src="./js/bootstrap.min.js" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl"
+        crossorigin="anonymous"></script>
+<script src="./js/Chart.bundle.min.js"></script>
+<style>
+    .canvasContainer {
+        height: 300px;
+        width: 500px;
+    }
+</style>
 
-<h2>h2</h2>
+<script>
+    var colors = ['rgb(255, 99, 132)', 'rgb(75, 192, 192)', 'rgb(54, 162, 235)', 'rgb(255, 159, 64)', 'rgb(201, 203, 207)']
+    var data = {
+        "join_cardinality": {
+            labels: ["DSE 5.1.6"],
+            datasets: [{
+                label: 'user join purchase',
+                data: [10]
+            }, {
+                label: 'purchase join user',
+                data: [44]
+            }]
+        }
+    }
+
+    window.onload = function () {
+        jQuery("._canvas").each(function (i) {
+            var ctx = this.getContext("2d");
+            var d = data[$(this).attr("data-name")]
+            $.each(d.datasets, function(i) {
+                d.datasets[i].backgroundColor = colors[i];
+            })
+            var chart = new Chart(ctx, {
+                type: 'bar',
+                data: d,
+                options: {
+                    responsive: true,
+                    legend: {
+                        position: 'top',
+                    },
+                    title: {
+                        display: true,
+                        text: 'Chart.js Bar Chart'
+                    },
+                    scales: {
+                        yAxes: [{
+                            ticks: {
+                                beginAtZero: true
+                            }
+                        }]
+                    }
+                }
+            });
+        })
+    };
+</script>
+
+
+<div class="container">
+    <h1>Spark guide</h1>
+
+    <h2>Joins</h2>
+
+    <div class="canvasContainer">
+        <canvas class="_canvas" data-name="join_cardinality"></canvas>
+    </div>
+    <h3>Joins</h3>
+    fd dfg sdfg k
+
+    <pre><code>&lt;p&gt;Sample text here...&lt;/p&gt;
+    &lt;p&gt;And another line of sample text here...&lt;/p&gt;
+    </code></pre>
+
+    joins user => purchase vs join purchase => user
+    FTS + FTS + spanByKey + join (same partitioner)
+    broadcast join on shop
+    dataframe join
+    dataframe.toRDD.joinWithCassandra.toDF
+    join medium ? joinwitcassandra vs filter join (surement pas terrible)
+    continuous paging vs normal paging
+
+    rdd vs dataset : select, map, save
+
+    cost mapping object vs tupple
+
+    pool full =>         .setMaxRequestsPerConnection(HostDistance.LOCAL, 32768)
+    .setMaxRequestsPerConnection(HostDistance.REMOTE, 32768)
+
+
+
+    <div class="row">
+        <div class="col-sm">
+            One of three columns
+        </div>
+        <div class="col-sm">
+            One of three columns
+        </div>
+        <div class="col-sm">
+            One of three columns
+        </div>
+    </div>
+</div>
