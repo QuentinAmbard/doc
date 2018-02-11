@@ -26,10 +26,10 @@ class CustomConnectionFactory  extends CassandraConnectionFactory {
       .withPoolingOptions(new PoolingOptions()
         .setMaxRequestsPerConnection(HostDistance.LOCAL, 32768)
         .setMaxRequestsPerConnection(HostDistance.REMOTE, 32768)
-        .setMaxConnectionsPerHost( HostDistance.LOCAL, 10)
-        .setCoreConnectionsPerHost(HostDistance.LOCAL,  2)
-        .setMaxConnectionsPerHost( HostDistance.REMOTE, 10)
-        .setCoreConnectionsPerHost(HostDistance.REMOTE, 2))
+        .setMaxConnectionsPerHost( HostDistance.LOCAL, 5)
+        .setCoreConnectionsPerHost(HostDistance.LOCAL,  1)
+        .setMaxConnectionsPerHost( HostDistance.REMOTE, 5)
+        .setCoreConnectionsPerHost(HostDistance.REMOTE, 1))
 
       .withQueryOptions(
         new QueryOptions()

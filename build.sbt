@@ -13,11 +13,13 @@ val sparkVersion = "2.2.0"
 
 libraryDependencies ++= Seq(
   "net.liftweb" %% "lift-json" % "2.6.3",
-  "com.datastax.spark" %% "spark-cassandra-connector" % "2.0.1",
+  "com.datastax.spark" %% "spark-cassandra-connector" % "2.0.7",
 
   "org.apache.spark" %% "spark-core"      % sparkVersion,
   "org.apache.spark" %% "spark-sql"       % sparkVersion,
   "org.apache.spark" %% "spark-streaming" % sparkVersion,
+  "com.fasterxml.jackson.core" % "jackson-core" % "2.9.4",
+  "com.fasterxml.jackson.module" %% "jackson-module-scala" % "2.9.4",
   "com.thedeanda" % "lorem" % "2.1"
 
 

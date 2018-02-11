@@ -18,16 +18,10 @@
 <script>
     var colors = ['rgb(255, 99, 132)', 'rgb(75, 192, 192)', 'rgb(54, 162, 235)', 'rgb(255, 159, 64)', 'rgb(201, 203, 207)']
     var data = {
-        "join_cardinality": {
-            labels: ["DSE 5.1.6"],
-            datasets: [{
-                label: 'user join purchase',
-                data: [10]
-            }, {
-                label: 'purchase join user',
-                data: [44]
-            }]
-        }
+        "mapper_cost": {"labels":["Full Table Scan"],"datasets":[{"label":"RDD scan mapper","data":[11380]},{"label":"RDD scan","data":[3253]},{"label":"DF scan","data":[3855]},{"label":"DS scan","data":[7977]}]},
+        "join_cardinality": {"labels":["User => Purchase","Purchase => User"],"datasets":[{"label":"joinWithCassandraTable","data":[42262,4274]},{"label":"joinKeyBy","data":[34611,31775]},{"label":"joinKeyBySamePartitioner","data":[27607,27901]},{"label":"joinSpanBy","data":[31753,31477]},{"label":"Spark Dataset Join","data":[33996,28998]},{"label":"Spark Dataframe Join","data":[28622,28083]}]}
+
+
     }
 
     window.onload = function () {
@@ -66,17 +60,234 @@
 <div class="container">
     <h1>Spark guide</h1>
 
-    <h2>Joins</h2>
+    <h2>Spark operation</h2>
+    <h3>Resources</h3>
+    By default, spark will launch a job with all cluster resources available. <br/>
+    It's a best practice to reduce the default configuration of the number of core and memory used to avoid having a long running job (spark shell or sql) stealing all resources.<br/>
+    Finding the best amount of memory and cores to your job isn't easy. The following can help define a good default value.<br/>
+    They key point to watch are the following:
+    <ul>
+        <li>Having many core will likely speed-up the computation</li>
+        <li>Having more memory will allow bigger partition. 4GB is a good start.</li>
+        <li>The executor memory is split between all its core. Having 1 executor running 4 cores on a 1GB heap is likely wrong.</li>
+        <li>It's generally best to define a number of core being a multiple of your number of executor</li>
+        <li>The number of core per executor is computed by totalNumberOfCore / numberOfExecutor </li>
+        <li>//TODO add magic formula here</li>
+    </ul>
+    <h3>Fair scheduler</h3>
+    By default, spark will execute jobs in a FIFO order.<br/>
+    If multiple jobs need to be running at the same time (tipically a long running job and small periodic jobs), the fair scheduler can be useful share cluster resources.<br/>
 
-    <div class="canvasContainer">
-        <canvas class="_canvas" data-name="join_cardinality"></canvas>
-    </div>
-    <h3>Joins</h3>
-    fd dfg sdfg k
+    <h2>Memory & partition size</h2>
+    <h3>Memory</h3>
+    By default, spark starts its executors with 1GB of memory. That's also what you get when you start a spark shell of a sparkSQL with dse sql.<br/>
+    Over those 1GB, 300MB are allocated to spark.<br/>
+    Over the 700MB remaining (1GB-300MB), 60% (by default) are reserved to spark execution (execution and persisted data).<br/>
+    That left roughly 300MB of memory for user. If you use more than this amount of memory in 1 spark partition (task), you'll get an OOM exception.
 
-    <pre><code>&lt;p&gt;Sample text here...&lt;/p&gt;
-    &lt;p&gt;And another line of sample text here...&lt;/p&gt;
+    <h3>Cassandra split size</h3>
+    While reading Cassandra table, the connector will try to split the data by spark partition off a given size. It's controlled by the following parameter
+    <pre><code>
+    spark.cassandra.input.split.size_in_mb = 64
     </code></pre>
+    Note: DSE 5.1 increase this value to 512mb by default for you.<br/>
+    Keep in mind that this setting is just an estimate based on Cassandra table size estimation. To have a better idea of your partition size, check the in/out parameter of each task in the spark webui.<br/>
+    If your spark application is running out of memory, increase spark executor heap and/or lower the split size/<br/>
+    This value define the partition size of the RDD. It doesn't apply for joins operation.
+
+    //TODO verifier que ce soit bien applicable pour les DF
+    <h3>Repartition</h3>
+    Repartition is generally used to increase the number of partition of your RDD. It's an expensive operation since it will require to shuffle all data. <br/>
+    Avoid unless necessary. It's generally a better practice to lower the original partition size. <br/>
+    It's generally best to repartition to a number being a multiple of your total number of core.
+    <h3>Coaelesce</h3>
+    Coaelesce reduce the number of partition. Unless the shuffle flag is set to true, it's a simple operation, partitions will just be merged on each executors.
+    <h3>Dataframe</h3>
+    Dataframe doesn't support custom partitioners. The number of partition of partition can be defined globally using the following parameter:
+
+    //TODO: global conf of DF partition size + number of partition of a specific RDD
+
+    <h3>RDD vs DataFrame</h3>
+    Dataframe is spark newer api and its future. Dataframes use Tungsten, a query optimizer with code generations.<br/>
+    Spark analyse your operations and builds a tree, generating code on the fly. It allows spark to be smart and re-order operation if needed (filter will be applied before joins etc.)<br/>
+    RDD are a now a lower level of abstraction and should be used only when Dataframe can't be used, or in specific case like joins (see below).<br/>
+    <h4>Serialization</h4>
+    Dataframes leverage tungsten, a serialization engine storing data in a binary columnar format. It allows byte-level comparaison, preventing costly object creation.<br/>
+    It's very fast and efficient. Since spark 2.0, a default builtin codec are available for case class, making the use of Dataset easy and efficient.<br/>
+    When used, RDD serialization can be improved using Kryo format. <br/>
+    //TODO add link to cryo.
+    <h4>Switching from Dataframe to RDD</h4>
+    Switching from one to another has a cost. It'll change serialization from tungsten to RDD forma, and also break spark Dataframe lineage, preventing potential optimization.
+    //TODO: add graph to check the cost of this operation.
+
+    <h3>Full table scan</h3>
+    <h4>RDD, mapper, Dataset or Dataframe?</h4>
+    Cassandra connector provide a mapper allowing to automatically mount row to scala case classes. It's handy but comes at a cost and will add pressure on the gc.<br/>
+    It might be preferable not to use the mapper on the hot path.<br/>
+    <h5>Full table scan with RDD and mapper:</h5>
+    <pre><code>
+    spark.sparkContext.cassandraTable[Purchase](DataLoader.Model.ks, table).count()
+    </code></pre>
+    <h5>Full table scan with RDD:</h5>
+    <pre><code>
+    spark.sparkContext.cassandraTable(DataLoader.Model.ks, table).count()
+    </code></pre>
+    <h5>Full table scan with Dataset:</h5>
+    <pre><code>
+    spark.read.cassandraFormat(table, DataLoader.Model.ks).load().as[Purchase].count()
+    </code></pre>
+    <h5>Full table scan with Dataframe:</h5>
+    <pre><code>
+    spark.read.cassandraFormat(table, DataLoader.Model.ks).load().count()
+    </code></pre>
+    <div class="canvasContainer">
+        <canvas class="_canvas" data-name="mapper_cost"></canvas>
+    </div>
+
+
+    <h4>DSE continuous paging</h4>
+    Continuous paging allow DSE server to continue to fetch data while spark is receiving one page.
+    See <a href="https://www.datastax.com/dev/blog/dse-continuous-paging-tuning-and-support-guide">DSE blog post for more information</a>
+    It should be enabled with the following option:
+    <pre><code>
+    --conf spark.dse.continuous_paging_enabled=true
+    //or
+    conf.set("spark.dse.continuous_paging_enabled","true")
+    </code></pre>
+    //TODO add graph
+
+    <h4>Dataset</h4>
+
+    <h3>Joining small dataset</h3>
+    <h4>Dataset</h4>
+    Spark usually pick a SortMergeJoin to perform joins. However, if the RDD being joined is small enought, it'll use a broadcast join.<br/>
+    By doing so it'll first fetch the data and then send it once to each executor, saving unecessary calls to Cassandra. The threshold is delimited by
+    <pre><code>spark.sql.autoBroadcastJoinThreshold = 10M</code></pre>
+
+    <pre><code>
+      val shop = spark.read.cassandraFormat(DataLoader.Model.shopTable, DataLoader.Model.ks).load().as[Shop]
+      val users = spark.read.cassandraFormat(userTable, DataLoader.Model.ks).load().as[User]
+      //Force a broadcast join, will override conf threshold. Current limit to 2GB (block size, SPARK-6235)
+      import org.apache.spark.sql.functions.broadcast
+      val join = users.join(broadcast(shop), "shop_id")
+    </code></pre>
+
+    <h4>RDD</h4>
+    The same logic can be applied to RDD. The small RDD must first be collected and broadcasted:
+    <pre><code>
+      //Start by collecting the small RDD and broadcast it:
+      val shops = spark.sparkContext.cassandraTable[Shop](DataLoader.Model.ks, shopTable).keyBy(s => s.shop_id).collect().toMap
+      val broadcastShops = spark.sparkContext.broadcast(shops)
+      val users = spark.sparkContext.cassandraTable[User](DataLoader.Model.ks, userTable)
+      val join: RDD[(User, Shop)] = users.flatMap(user => {
+        broadcastShops.value.get(user.shop_id).map {shop => (user, shop)}
+      })
+    </code></pre>
+    //TODO add broadcast join graph
+
+    <h3>Joins</h3>
+    <h4>RDD joins</h4>
+    Joins can be costly. If the 2 RDD being joins aren't sharing the same partitioner, a shuffle will be require to distribute the key to the same partitions.<br/>
+    To prevent that, a common partitioner can be used. Be aware that the following operation will remove the partitioner.<br/>
+    //TODO: add operation table
+
+    <br/>
+    To join 1 RDD with a non-cassandra RDD, the connector allows you to use .applyPartitionerFrom(otherRDD). All Partition Keys columns must also be present in the keys of the target RDD.
+    <h4>Dataframe joins</h4>
+    Spark
+    <h4>Join with a cassandra table</h4>
+    The RDD joinWithCassandra operation will trigger 1 query for each RDD row and won't trigger shuffle.<br/>
+    as of DSE 5.1.x, a DatafFrame join will first perform 2 full table scan, and then perform a join on those 2 Dataframe, which is likely to be less efficient.<br/>
+    Spark SQL perform the same way.<br/>
+
+    //TODO: 1 vs 10 or 10 vs 1
+    <h5>joinWithCassandraTable</h5>
+    <pre><code>
+    spark.sparkContext.cassandraTable(DataLoader.Model.ks, userTable).joinWithCassandraTable(DataLoader.Model.ks, purchaseTable)
+    </code></pre>
+    <h5>joinWithCassandraTable with mapper</h5>
+    <pre><code>
+    spark.sparkContext.cassandraTable[User](DataLoader.Model.ks, userTable).joinWithCassandraTable[Purchase](DataLoader.Model.ks, purchaseTable)
+    </code></pre>
+    <h5>RDD join keyBy</h5>
+    <pre><code>
+    val purchases = spark.sparkContext.cassandraTable[Purchase](DataLoader.Model.ks, purchaseTable).keyBy(p => p.user_id)
+    val users = spark.sparkContext.cassandraTable[User](DataLoader.Model.ks, userTable).keyBy(u => u.user_id)
+    users.join(purchases)
+    </code></pre>
+    <h5>RDD join keyBy same partitioner</h5>
+    <pre><code>
+      val purchases = spark.sparkContext.cassandraTable[Purchase](DataLoader.Model.ks, purchaseTable).keyBy[Tuple1[Long]]("user_id")
+      val users = spark.sparkContext.cassandraTable[User](DataLoader.Model.ks, userTable).keyBy[Tuple1[Long]]("user_id").applyPartitionerFrom(purchases)
+      users.join(purchases)
+    </code></pre>
+    <h5>RDD join span by key</h5>
+    <pre><code>
+      val purchases = spark.sparkContext.cassandraTable[Purchase](DataLoader.Model.ks, purchaseTable).spanBy(p => p.user_id)
+      val users = spark.sparkContext.cassandraTable[User](DataLoader.Model.ks, userTable).keyBy(u => u.user_id)
+      val joinrdd: RDD[(Long, (Iterable[Purchase], User))] = purchases.join(users)
+    </code></pre>
+    <h5>joinWithCassandraTable span by key</h5>
+    <pre><code>
+      spark.sparkContext.cassandraTable(DataLoader.Model.ks, purchaseTable).spanBy(r => r.getLong("user_id")).joinWithCassandraTable(DataLoader.Model.ks, userTable)
+    </code></pre>
+
+    <div class="canvasContainer"><canvas class="_canvas" data-name="join_cardinality"></canvas></div>
+
+    <pre><code>
+    val purchases = spark.read.cassandraFormat(purchaseTable, DataLoader.Model.ks).load()
+    val users = spark.read.cassandraFormat(userTable, DataLoader.Model.ks).load()
+    val joinDF = users.joinWith(purchases, purchases("user_id") === users("user_id"))
+    </code></pre>
+    //TODO mettre a jour les snippet + graph
+
+    <h2>Pushdown filters</h2>
+    //TODO explain how to make sure it's pushed down.
+    //TODO explain solr push down.
+
+
+    <h2>Spark asynchronous process</h2>
+
+    <h2>Object pool</h2>
+
+    <h2>Cache vs Persist</h2>
+
+    <h2>Shuffle</h2>
+    How to detect
+    reduce vs aggregate
+    prevent object creation on hot path
+
+    <h2>Spark streaming guide for kafka</h2>
+    General advise
+    <ul>
+        <li>If you are reading from kafka and have a high number of kafka partition, it's probably a good idea to start your microbatches with a coaelesce</li>
+        <li>If your streaming job gets too complicated with many small steps and many .cache() operations, your throughput might become extremly low.<br/>
+            In this case, it's sometime better to reduce the number of steps and stop developping using "spark-logic".<br/>
+            Instead, in a single .map() operation, you can create a multithreaded operation processing line by line as you would do in a normal batch.<br/>
+            It's often faster, easier to reason and maintain, especially when you start having tens of final operations with very large DAGS.
+            //TODO: add asynch helper code example
+        </li>
+    </ul>
+    <h3>Before structured streaming</h3>
+    <ul>
+        <li>Don't use spark native checkpointing. It's not safe, messages can be lost.</li>
+        <li>Use a lightweight transaction to save your checkpoints to ensure you don't loose any data and a single app is running. </li>
+        <li>To make sure you don't loose any data, you need to fail as soon as you get an error. If you don't do so, spark will skip the microbatch and process the next one.<br/>
+            By doing so, keep in mind that an applicative error (ex: NPE in your code) will stuck your streaming app since it will retry forever. You might want to cache all a: //TODO add code here</li>
+    </ul>
+    <h3>Structured streaming</h3>
+    <ul>
+        <li>Still need to make sure 2 applications with the same name aren't checkpointing at the same time. //TODO: what can we do?</li>
+        <li>Structured streaming finally fail safe</li>
+        <li>You can use a custom sink to mimic old streaming behavior (microbatch)</li>
+    </ul>
+
+    <h2>Packaging</h2>
+    TODO: maven dependency, profile etc.
+
+    <h2>Consistency</h2>
+
+    joins en cours sur toute la table uniquement. Voir sur un % plus faible.
 
     joins user => purchase vs join purchase => user
     FTS + FTS + spanByKey + join (same partitioner)
