@@ -148,14 +148,13 @@ object BenchmarkJoins extends App {
       val joinRdd = spark.sparkContext.cassandraTable(DataLoader.Model.ks, purchaseTable).joinWithCassandraTable(DataLoader.Model.ks, userTable)
       println(joinRdd.toDebugString)
       assert(count == joinRdd.count())
-      joinRdd.foreach(println)
     }
     Dataset("joinWithCassandra", Seq(userJoinPurchase, purchaseJoinUser))
   }
 
 
   private def joinWithCassandraMapper(count: Long, userTable: String, purchaseTable: String) = {
-    println("joinWithCassandraTable")
+    println("joinWithCassandraTable Mapper")
     val userJoinPurchase = TimeitUtils.timeIt(1) {
       val joinRdd = spark.sparkContext.cassandraTable[User](DataLoader.Model.ks, userTable).joinWithCassandraTable[Purchase](DataLoader.Model.ks, purchaseTable)
       println(joinRdd.toDebugString)
@@ -165,7 +164,6 @@ object BenchmarkJoins extends App {
       val joinRdd = spark.sparkContext.cassandraTable[Purchase](DataLoader.Model.ks, purchaseTable).joinWithCassandraTable[User](DataLoader.Model.ks, userTable)
       println(joinRdd.toDebugString)
       assert(count == joinRdd.count())
-      joinRdd.foreach(println)
     }
     Dataset("joinWithCassandra Mapper", Seq(userJoinPurchase, purchaseJoinUser))
   }
