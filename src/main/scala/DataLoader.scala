@@ -10,7 +10,7 @@ import java.util.Random
 import BenchmarkHelper.spark
 
 
-object DataLoader extends App {
+object DataLoader {
 
   def shopNumber = 100
   def usersNumber = 10000
@@ -24,15 +24,20 @@ object DataLoader extends App {
     val purchaseTable = s"purchase"
     val shopTable = s"shop"
   }
+  val spark = BenchmarkHelper.spark
 
-  def loadData() = {
+  def main(args: Array[String]) = {
+    val shopNumber = args(0).toInt
+    val usersNumber = args(1).toInt
+    val purchaseNumberPerUser = args(2).toInt
+    loadData(shopNumber, usersNumber, purchaseNumberPerUser)
+    spark.stop()
+  }
+
+  def loadData(shopNumber: Int = 100, usersNumber: Int = 10000,purchaseNumberPerUser: Int = 20) = {
+    println(s"loading data with shopNumber: Int = $shopNumber, usersNumber: Int = $usersNumber,purchaseNumberPerUser: Int = $purchaseNumberPerUser")
     val r = new Random(100)
 
-    val spark = BenchmarkHelper.spark
-    import spark.implicits._
-    val shopNumber = 100
-    val usersNumber = 10000
-    val purchaseNumberPerUser = 20
 
     CassandraConnector(spark.sparkContext.getConf).withSessionDo(session => {
       session.execute(s"CREATE KEYSPACE IF NOT EXISTS ${Model.ks} WITH replication = {'class': 'SimpleStrategy', 'replication_factor': 1}")
@@ -72,7 +77,6 @@ object DataLoader extends App {
     ).saveToCassandra(Model.ks, Model.purchaseTable)
   }
 
-  loadData()
 
 }
 

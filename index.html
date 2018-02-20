@@ -1,3 +1,8 @@
+<link rel="stylesheet"
+      href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/default.min.css">
+<script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/highlight.min.js"></script>
+<script >hljs.initHighlightingOnLoad();</script>
+
 <link rel="stylesheet" href="./js/bootstrap.min.css"
       integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
 <script src="./js/jquery-3.2.1.slim.min.js"
@@ -9,19 +14,59 @@
         crossorigin="anonymous"></script>
 <script src="./js/Chart.bundle.min.js"></script>
 <style>
+    pre {
+        background-color: #f7f7f7;
+    }
+    code {
+        font-size: 12px !important;
+    }
+    h2 {
+        font-weight: bold;
+    }
+    h3 {
+        font-size: 1.3rem;
+        color: #f09a34;
+    }
+    h4 {
+        font-weight: bold;
+        font-size: 1.1rem;
+    }
+
     .canvasContainer {
         height: 300px;
         width: 500px;
+    }
+    .canvasContainerBig {
+        height: 500px;
+        width: 1000px;
     }
 </style>
 
 <script>
     var colors = ['rgb(255, 99, 132)', 'rgb(75, 192, 192)', 'rgb(54, 162, 235)', 'rgb(255, 159, 64)', 'rgb(201, 203, 207)']
     var data = {
-        "mapper_cost": {"labels":["Full Table Scan"],"datasets":[{"label":"RDD scan mapper","data":[11380]},{"label":"RDD scan","data":[3253]},{"label":"DF scan","data":[3855]},{"label":"DS scan","data":[7977]}]},
-        "join_cardinality": {"labels":["User => Purchase","Purchase => User"],"datasets":[{"label":"joinWithCassandraTable","data":[42262,4274]},{"label":"joinKeyBy","data":[34611,31775]},{"label":"joinKeyBySamePartitioner","data":[27607,27901]},{"label":"joinSpanBy","data":[31753,31477]},{"label":"Spark Dataset Join","data":[33996,28998]},{"label":"Spark Dataframe Join","data":[28622,28083]}]}
+    "mapper_cost": {"labels":["Full Table Scan", "C.P. on, Full Table Scan"],"datasets":[{"label":"RDD scan mapper","data":[34499,21218]},{"label":"RDD scan","data":[14282,6479]},{"label":"DF scan","data":[13276,7708]},{"label":"DS scan","data":[18122,12544]}]},
 
+    "join_cardinality": {"labels":["user => purchase","C.P. on, user => purchase","purchase => user","C.P. on, purchase => user"],"datasets":[
+            {"label":"joinWithCassandra","data":[25394,24888,94676,94195]},
+            {"label":"joinWithCassandra Mapper","data":[20878,21621,94516,96470]},
+            {"label":"RDD join keyBy","data":[30191,23422,28168,22721]},
+            {"label":"RDD join keyBy same partitioners","data":[13660,7676,13519,7370]},
+            {"label":"RDD join span by key","data":[23222,16909,23027,16260]},
+            {"label":"Spark Dataset Join","data":[23612,17842,17337,10659]},
+            {"label":"Spark Dataframe Join","data":[17372,11330,16553,10110]}]}
+        ,
+        "join_cardinality_10": {"labels":["user (10%) => purchase","C.P. on, user (10%) => purchase","purchase => user (10%)","C.P. on, purchase => user (10%)"],"datasets":[
+                {"label":"joinWithCassandra","data":[2332,2296,72484,75793]},
+                {"label":"joinWithCassandra Mapper","data":[2486,2461,73091,75844]},
+                {"label":"RDD join keyBy","data":[26123,19948,26634,20140]},
+                {"label":"RDD join keyBy same partitioners","data":[11443,6783,11248,6221]},
+                {"label":"RDD join span by key","data":[21863,14959,21501,14929]},
+                {"label":"Spark Dataset Join","data":[16630,9876,15098,9343]},
+                {"label":"Spark Dataframe Join","data":[16318,9219,15099,8724]}]},
 
+        "broadcast_join": {"labels":["user => shop Broadcast","user => shop"],"datasets":[{"label":"Spark small Dataframe join","data":[5814,11443]},{"label":"Spark small RDD join","data":[2906,19692]}]},
+        "broadcast_join_10": {"labels":["user (10%) => shop Broadcast","user (10%) => shop"],"datasets":[{"label":"Spark small Dataframe join","data":[2547,1113]},{"label":"Spark small RDD join","data":[836,2054]}]}
     }
 
     window.onload = function () {
@@ -56,7 +101,6 @@
     };
 </script>
 
-
 <div class="container">
     <h1>Spark guide</h1>
 
@@ -73,30 +117,39 @@
         <li>The number of core per executor is computed by totalNumberOfCore / numberOfExecutor </li>
         <li><a href="https://github.com/groupon/sparklint">Sparklint</a> can be useful to optimize cluster utilization</li>
     </ul>
-    <h3>Fair scheduler</h3>
+    <h3>Running multiple spark application: dynamic resource allocation</h3>
+    Dynamic allocation can be used to allow a spark job to dynamically extends its resources (request more executors).
+    see <a href="https://spark.apache.org/docs/latest/job-scheduling.html#configuration-and-setup">Spark documentation detail</a>
+    (typically a long running job with small periodic jobs)
+    <h3>Running jobs within a single spark application: fair scheduler</h3>
     By default, spark will execute jobs in a FIFO order.<br/>
-    If multiple jobs need to be running at the same time (typically a long running job with small periodic jobs), the fair scheduler can be useful to share cluster resources more efficiently.<br/>
-    //TODO dynamic allocation +
+    If multiple jobs need to be running at the same time, the fair scheduler can be used to run multiple jobs in parrallel (multiple pools can be defined, each pools can be FIFO or FAIR).<br/>
+    see <a href="https://spark.apache.org/docs/latest/job-scheduling.html#configuration-and-setup">Spark documentation detail</a>
 
     <h2>Running your job</h2>
     <h3>How to submit</h3>
-    3 api + jobserver (only shared)
-    Voila un exemple de l'api cql ci-dessous.
-    L'api "cachée" http de spark: https://gist.github.com/arturmkrtchyan/5d8559b2911ac951d34a (il faut vérifier que cela ffonctionne encore en DSE 5.1, je ne suis pas sur)
-    Attention ces 2 methodes ne sont pas officiellement supportées (cql en experimental, l'autre http pas supporté tout court. Je te conseille de partir sur la soumission cql plutôt que l'autre)
+    There are mainly 4 ways to submit a spark job:
+    <ul>
+        <li>from a cluster node, using dse submit</li>
+        <li>Spark http api (not supported, not working in DSE > 5.1. https://gist.github.com/arturmkrtchyan/5d8559b2911ac951d34a)</li>
+        <li>cql submission (experimental, not supported)</li>
+        <li>Spark jobserver (not HA)</li>
+    </ul>
 
-    et l'api du master:
-    http://masterUI:7080/json
-    et enfin la documentation de l'api classique:
-    https://spark.apache.org/docs/latest/monitoring.html
-
-
-    Running Spark application in cluster mode with CQL RPC API (tested on 5.1.6, should work on 5.1.0+)
-
-    dse fs "put /home/florent/bootcamp/bootcamp-project/target/boot-camp-java-0.0.1-SNAPSHOT.jar /boot-camp-java-0.0.1-SNAPSHOT.jar"
-    send jar to dsefs
+    It's easier to submit jars to DSEFS, especially when running on cluster mode.
+    <pre><code>
+    //send jar to dsefs. DSEFS HTTP api can also be used.
+    dse fs "put /home/quentin/testspark-0.0.1-SNAPSHOT.jar /testspark-0.0.1-SNAPSHOT.jar"
+    //start job
+    dse spark-submit --class TestSpark --files /home/quentin/logback-spark-test.xml --conf "spark.driver.extraJavaOptions=-Dlogback.configurationFile=logback-spark-test.xml" --conf "spark.executor.extraJavaOptions=-Dlogback.configurationFile=logback-spark-test.xml" --deploy-mode cluster dsefs://localhost:5598/testspark-0.0.1-SNAPSHOT.jar
+    </code></pre>
     <h3>Configuration files</h3>
-    dse spark-submit --class com.datastax.atweiter.spark.stream.DirectKafkaEventWriter --files /home/florent/bootcamp/dse-5.1.5/resources/spark/conf/logback-spark-test.xml --conf "spark.driver.extraJavaOptions=-Dlogback.configurationFile=logback-spark-test.xml" --conf "spark.executor.extraJavaOptions=-Dlogback.configurationFile=logback-spark-test.xml" --deploy-mode cluster dsefs://localhost:5598/boot-camp-java-0.0.1-SNAPSHOT.jar
+
+    <h3>Monitoring apis</h3>
+    <ul>
+        <li>Master api: http://masterUI:7080/json</li>
+        <li>Standar api: https://spark.apache.org/docs/latest/monitoring.html</li>
+    </ul>
 
 
     <h2>Memory & partition size</h2>
@@ -104,7 +157,8 @@
     By default, spark starts its executors with 1GB of memory. That's also what you get when you start a spark shell of a sparkSQL with dse sql.<br/>
     Over those 1GB, 300MB are allocated to spark.<br/>
     Over the 700MB remaining (1GB-300MB), 60% (by default) are reserved to spark execution (execution and persisted data).<br/>
-    That left roughly 300MB of memory for user. If you use more than this amount of memory in 1 spark partition (task), you'll get an OOM exception.
+    That left roughly 300MB of memory for user. If you use more than this amount of memory in 1 spark partition (task), you'll get an OOM exception.<br/>
+    <a href="http://blog.cloudera.com/blog/2015/03/how-to-tune-your-apache-spark-jobs-part-2/">Cloudera "How-to: Tune Your Apache Spark Jobs"</a>
 
     <h3>Partition number</h3>
     spark.sql.shuffle.partitions configures the number of partitions that are used when shuffling data for sparkSQL/Dataframe joins or aggregations.<br/>
@@ -112,19 +166,41 @@
     Note that Spark handles partitions differently when there is more than 2000 partition. If your partition number is close to this number, try to increase it to more than 2000.<br/>
     The number of partition is generally driver by the partition size. Try to aim for a partition size of 128MB.<br/>
     Few partitions will result to no/bad parallelism, too many add overhead.<br/>
-    Skew data is painful and are likely to create big partitions. Salt technique are generally use to mitigate this issue.<br/>
+    Here is a formula to get a rought idea of the ideal number of partition. <br/>
+    size.of.stage can be find by saving the data and checking its size in the webui.<br/>
+    <pre><code>
+    //If data is being cached:
+    memory.available.per.task = (spark.executor.memory - overhead) x spark.memory.fraction x (1 - spark.memory.storageFraction) / spark.executor.cores
+    partition.number = size.of.stage / memory.available.per.task
+                     = size.of.stage / ((spark.executor.memory - overhead) x spark.memory.fraction x (1 - spark.memory.storageFraction) / spark.executor.cores)
+                     = size.of.stage / ((spark.executor.memory - 300) x 0.6 x (1 - 0.5) / spark.executor.cores)
+                     = size.of.stage / ((spark.executor.memory - 300) x 0.3 / spark.executor.cores)
+    //If no data is being cached, spark.memory.storageFraction = 0, so in this case:
+    partition.number = size.of.stage / ((spark.executor.memory - 300) x 0.6 / spark.executor.cores)
+    </code></pre>
+    <div class="alert alert-info" role="alert">
+        Another approximation for the size.of.stage could be the following : shuffle write * Shuffle spill (memory) / Shuffle spill (disk).<br/>
+        Shuffle write can be find in the stage detail.<br/>
+        from <a href="http://jason4zhu.blogspot.fr/2015/06/roaming-through-spark-ui-and-tune-performance-upon-a-specific-use-case.html">Jason blog post</a>:
+        FYI: Shuffle spill (memory) is the size of the deserialized form of the data in memory at the time when we spill it, whereas shuffle spill (disk) is the size of the serialized form of the data on disk after we spill it<br/>
 
-    //TODO add magic formula here
+    </div>
+    <div class="alert alert-info" role="alert">
+        Skew data is painful and are likely to create big partitions. Salt technique are generally use to mitigate this issue.<br/>
+    </div>
+    <a href="http://shop.oreilly.com/product/0636920046967.do">Spark perf tuning</a> from Holden Karau and Rachel Warren is a good reference.
 
 
     <h3>Cassandra split size</h3>
     While reading Cassandra table, the connector will try to split the data by spark partition off a given size. <br/>
-    1 spark partition contains 1 Cassandra partitions. however 1 Cassandra partition will always be loaded in a unique spark partition. <br/>
+    1 spark partition contains N Cassandra partitions. however 1 Cassandra partition will always be loaded in a unique spark partition. <br/>
     Spark partition size are controlled by the following parameter:
     <pre><code>
     spark.cassandra.input.split.size_in_mb = 128
     </code></pre>
-    Note: DSE 5.1 increase this value to 512mb by default for you.<br/>
+    <div class="alert alert-info" role="alert">
+    Note: DSE 5.1 increase this value to 512mb by default for you.
+    </div>
     Keep in mind that this setting is just an estimate based on Cassandra table size estimation. To have a better idea of your partition size, check the in/out parameter of each task in the spark webui.<br/>
     If your spark application is running out of memory, increase spark executor heap and/or lower the original split size/<br/>
     This value define the partition size when reading data from Cassandra only, it doesn't apply for joins operation.
@@ -137,15 +213,13 @@
     <h3>Coaelesce</h3>
     Coaelesce reduce the number of partition in a RDD or Dataframe. Unless the shuffle flag is set to true, it's a simple operation, partitions will just be merged on each executors.<br/>
 
-    //TODO: global conf of DF partition size + number of partition of a specific RDD
-
     <h2>RDD vs DataFrame</h2>
-    Dataframe is spark new shiny api. Dataframes use Tungsten, a query optimizer with code generations.<br/>
+    Dataframe is spark new shiny api. Dataframes use Catalyst, a query optimizer with code generations.<br/>
     Spark analyse your operations and builds a tree, generating code on the fly. It allows spark to be smart and re-order operation if needed (filter will be applied before joins etc.)<br/>
     RDD are a now a lower level of abstraction and should be used only when Dataframe can't be used, or in specific case like joins (see below).<br/>
     <h3>Serialization</h3>
-    Dataframes leverage tungsten, a serialization engine storing data in a binary columnar format. It allows byte-level comparaison, preventing costly object creation.<br/>
-    It's very fast and efficient. Since spark 2.0, a default builtin codec are available for case class, making the use of Dataset (typed api) easy and efficient.<br/>
+    Dataframes also leverage tungsten, a serialization engine designed to store binary data in a columnar format. It allows byte-level comparison, preventing costly object creation.<br/>
+    It's fast and efficient. Since spark 2.0, default builtin codec are available for case classes, making the use of Dataset (typed api) easy and efficient.<br/>
     Custom encoders can be built to provide serialization for non-supported type.<br/>
     When RDD are used, serialization speed can be improved <a href="http://spark.apache.org/docs/latest/tuning.html#data-serialization">using Kryo format</a>. <br/>
 
@@ -162,33 +236,44 @@
         <li>Parameters like output.batch.grouping.buffer.size, output.batch.size.bytes, output.concurrent.writes can be tuned to increase the throughput, but the default values are usually good.</li>
         <li>The spark cassandra connector will try to group data per partition to increase write efficiency. A saveToCassandra operation will likely be faster on an ordered RDD. Do not order your data just for that reason. </li>
         <li>Unless it's a free operation, it's generally best not to focus too much on data locality.</li>
-        <li>Spark will very likely hammer your cluster while reading/joining from a Cassandra table. In some cases, it can be worth limiting the maximum throughput of the connector for a specific job. use input.reads_per_sec (with continuous paging only) or output.throughput_mb_per_sec.</li>
+        <li>Spark will very likely hammer your cluster while reading/joining from a Cassandra table. In some cases, it can be worth limiting the maximum throughput of the connector for a specific operation. use input.reads_per_sec (with continuous paging only) or output.throughput_mb_per_sec.</li>
     </ul>
 
-    <h3>Full table scan</h3>
-    <h4>RDD, mapper, Dataset or Dataframe?</h4>
+    <h3>Full table scan - RDD, mapper, Dataset or Dataframe?</h3>
+    <h4>DSE continuous paging</h4>
+    Continuous paging allows DSE server to continue to fetch data while spark is processing a page.
+    See <a href="https://www.datastax.com/dev/blog/dse-continuous-paging-tuning-and-support-guide">DSE blog post for more information</a>
+    It generally boosts cassandra read time and can be enabled with the following option:
+    <pre><code>spark.dse.continuous_paging_enabled=true</code></pre>
+
+    <h4>Full table scan with RDD and mapper:</h4>
     Cassandra connector provide a mapper allowing to automatically mount row to scala case classes. It's handy but comes at a cost and will add pressure on the gc.<br/>
     It might be preferable not to use the mapper on the hot path.<br/>
-    <h5>Full table scan with RDD and mapper:</h5>
-    <pre><code>
+    <pre><code class="">
     spark.sparkContext.cassandraTable[Purchase](DataLoader.Model.ks, table).map(..).count()
     </code></pre>
-    <h5>Full table scan with RDD:</h5>
+    <h4>Full table scan with RDD:</h4>
     <pre><code>
     spark.sparkContext.cassandraTable(DataLoader.Model.ks, table).map(..).count()
     </code></pre>
-    <h5>Full table scan with Dataset:</h5>
+    <h4>Full table scan with Dataset:</h4>
     <pre><code>
     spark.read.cassandraFormat(table, DataLoader.Model.ks).load().as[Purchase].map(..).count()
     </code></pre>
-    <h5>Full table scan with Dataframe:</h5>
+    <h4>Full table scan with Dataframe:</h4>
     <pre><code>
     spark.read.cassandraFormat(table, DataLoader.Model.ks).load().map(..).count()
     </code></pre>
     <div class="canvasContainer">
         <canvas class="_canvas" data-name="mapper_cost"></canvas>
     </div>
+    <div class="alert alert-info" role="alert">
+        Continuous paging clearly speeds up full scan. Make sure you <a href="https://www.datastax.com/dev/blog/dse-continuous-paging-tuning-and-support-guide">read this post before enabling it</a>.
+    </div>
 
+    <div class="alert alert-warning" role="alert">
+        The mapper comes at a cost and should be used wisely.
+    </div>
 
     <h2>Pushdown filters</h2>
     Spark can push down filters to the source. If you perform a filter on a partition key, clustering column or token range, it can be pushed-down to Cassandra.<br/>
@@ -197,15 +282,26 @@
         Logger.getLogger("org.apache.spark.sql.cassandra").setLevel(Level.DEBUG)
     </code></pre>
 
-    //TODO explain how to make sure it's pushed down.
-    //TODO explain solr push down.
+    Search request can also be pushed down to DSE (this is not yet automatic in DSE 5.1).<br/>
+    Search predicate allow instant count(*) operation, and are fast for queries retrieving a very small amount of data (<2-3%). It's usually faster to scan all the table after this limit.<br/>
+    Enable search push-down the following parameter:
 
-    <h3>DSE continuous paging</h3>
-    Continuous paging allows DSE server to continue to fetch data while spark is processing a page.
-    See <a href="https://www.datastax.com/dev/blog/dse-continuous-paging-tuning-and-support-guide">DSE blog post for more information</a>
-    It generally boosts cassandra read time and can be enabled with the following option:
-    <pre><code>spark.dse.continuous_paging_enabled=true</code></pre>
-    //TODO add graph
+    <pre><code>
+        //Globally: spark.sql.dse.solr.enable_optimization=true
+        //Or locally per read
+        val solrEnabledDataSet = spark.read
+            .format("org.apache.spark.sql.cassandra")
+            .options(Map(
+            "keyspace" -> "ks",
+            "table" -> "tab",
+            "spark.sql.dse.solr.enable_optimization" -> "true")
+            .load()
+    </code></pre>
+    Enable debug to make sure the filter is applied:
+    <pre><code>
+        Logger.getLogger("org.apache.spark.sql.SolrPredicateRules").setLevel(Level.DEBUG)
+    </code></pre>
+    <a href="https://docs.datastax.com/en/dse/5.1/dse-dev/datastax_enterprise/analytics/dseSearchAnalyticsOverview.html">Datastax search analytics integration</a>
 
     <h2>Shuffle</h2>
     Shuffle are expensive. Dataframe will try to optimize your lineage to ensure operations like reduces or filters are executed before the shuffle to reduce the amount of data.<br/>
@@ -242,14 +338,14 @@
               +- *Scan org.apache.spark.sql.cassandra.CassandraSourceRelation@61503d00 [user_id#94L,purchase_id#95L,item#96,price#97] ReadSchema: struct&lt;_2:struct&lt;user_id:bigint,purchase_id:bigint,item:string,price:int&gt;&gt;
 
     </code></pre>
-    //TODO How to detect
-    //TODO reduce vs aggregate
-    //TODO prevent object creation on hot path
+    <div class="alert alert-warning" role="alert">
+        Avoid creating objects in the "hot path", it will overload the GC. Prefer mutable object / Array.
+    </div>
 
     <h2>Joins</h2>
     <h3>Joining small dataset</h3>
     <h4>Dataset</h4>
-    Spark usually pick a SortMergeJoin to perform joins. However, if the data being joined is small enought, it'll use a broadcast join.<br/>
+    Spark usually pick a SortMergeJoin to perform joins. However, if the data being joined is small enough, it'll use a broadcast join.<br/>
     By doing so it'll first fetch the data and then send it once to each executor, saving unecessary calls to Cassandra. The threshold is delimited by
     <pre><code>spark.sql.autoBroadcastJoinThreshold = 10M</code></pre>
 
@@ -272,7 +368,17 @@
         broadcastShops.value.get(user.shop_id).map {shop => (user, shop)}
       })
     </code></pre>
-    //TODO add broadcast join graph
+    <div class="container">
+        <div class="row">
+            <div class="col-sm">
+                <div class="canvasContainer"><canvas class="_canvas" data-name="broadcast_join"></canvas></div>
+            </div>
+            <div class="col-sm">
+                <div class="canvasContainer"><canvas class="_canvas" data-name="broadcast_join_10"></canvas></div>
+            </div>
+        </div>
+    </div>
+
 
     <h3>Normal joins</h3>
     <h4>RDD joins</h4>
@@ -341,7 +447,11 @@
     val users = spark.read.cassandraFormat(userTable, DataLoader.Model.ks).load().as[User]
     val joinDS = users.joinWith(purchases, purchases("user_id") === users("user_id"))
     </code></pre>
-    <div class="canvasContainer"><canvas class="_canvas" data-name="join_cardinality"></canvas></div>
+    Result with a 5 nodes cluster, RF 3, 1 table with 1 000 000 users with and avg of 10 purchases,  (purchase table with 10 000 000 row, full table scan of both users and purchases)
+    <div class="canvasContainerBig"><canvas class="_canvas" data-name="join_cardinality"></canvas></div>
+    Result with a 5 nodes cluster, RF 3, 1 table with 100000 users joining with and avg of 10 purchases  (purchase table with 10 000 000 row, select only 10% of the table)
+    <div class="canvasContainerBig"><canvas class="_canvas" data-name="join_cardinality_10"></canvas></div>
+    Continuous paging on: Result with a 5 nodes cluster, RF 3, 1 table with 1 000 000 users with and avgiv>
 
     //TODO mettre a jour les snippet + graph
 
@@ -457,6 +567,8 @@
         <li>You can use a custom sink to mimic old streaming behavior (microbatch)</li>
         <li>Checkpointing requires many sequential operation and can be slow on distributed filesystem like DSEFS. Any custom HadoopFilesystem can be used to directly save data to C*. //TODO: add link</li>
     </ul>
+
+    https://jaceklaskowski.gitbooks.io/spark-structured-streaming/
 
     https://umbertogriffo.gitbooks.io
 

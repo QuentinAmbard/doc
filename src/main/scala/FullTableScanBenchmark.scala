@@ -27,6 +27,7 @@ object FullTableScanBenchmark extends App {
       Dataset("DF scan", Seq(dftime)),
       Dataset("DS scan", Seq(dstime))))
     println(Json.mapper.writeValueAsString(measure))
+    Json.mapper.writeValueAsString(measure)
   }
 
   getData(DataLoader.Model.purchaseTable)

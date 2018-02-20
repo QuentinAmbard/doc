@@ -1,7 +1,10 @@
-//import sbtassembly.PathList
+import sbtassembly.PathList
 
 //sbt clean assembly
-//dse spark-submit --class exactlyonce.ExactlyOnceTestForEachKill /home/quentin/projects/spark-scala-kafka/target/scala-2.11/spark-scala-kafka-assembly-0.1.jar
+//dse spark-submit --class DataLoader doc-assembly-0.1.jar 1000 1000000 20
+//dse spark-submit --executor-memory=6g --class BenchmarkJoins doc-assembly-0.1.jar 3
+//dse spark-submit --executor-memory=6g --conf spark.dse.continuous_paging_enabled=true --class BenchmarkJoins doc-assembly-0.1.jar 3
+
 
 
 version := "0.1"
@@ -12,23 +15,18 @@ val sparkVersion = "2.2.0"
 //val sparkVersion = "2.0.2"
 
 libraryDependencies ++= Seq(
-  "net.liftweb" %% "lift-json" % "2.6.3",
-  "com.datastax.spark" %% "spark-cassandra-connector" % "2.0.7",
+  "com.datastax.spark" %% "spark-cassandra-connector" % "2.0.7" % "provided",
 
-  "org.apache.spark" %% "spark-core"      % sparkVersion,
-  "org.apache.spark" %% "spark-sql"       % sparkVersion,
-  "org.apache.spark" %% "spark-streaming" % sparkVersion,
-  "com.fasterxml.jackson.core" % "jackson-core" % "2.9.4",
-  "com.fasterxml.jackson.module" %% "jackson-module-scala" % "2.9.4",
+  "org.apache.spark" %% "spark-core"      % sparkVersion % "provided",
+  "org.apache.spark" %% "spark-sql"       % sparkVersion % "provided",
   "com.thedeanda" % "lorem" % "2.1"
-
 
 )
 
 
 
 // resolvers += "Job Server Bintray" at "https://dl.bintray.com/spark-jobserver/maven"
-/*
+
 assemblyMergeStrategy in assembly := {
   case PathList("javax", "servlet", xs @ _*) => MergeStrategy.last
   case PathList("javax", "activation", xs @ _*) => MergeStrategy.last
@@ -52,4 +50,4 @@ assemblyMergeStrategy in assembly := {
 }
 
 
-*/
+
