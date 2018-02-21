@@ -66,7 +66,8 @@
                 {"label":"Spark Dataframe Join","data":[16318,9219,15099,8724]}]},
 
         "broadcast_join": {"labels":["user => shop Broadcast","user => shop"],"datasets":[{"label":"Spark small Dataframe join","data":[5814,11443]},{"label":"Spark small RDD join","data":[2906,19692]}]},
-        "broadcast_join_10": {"labels":["user (10%) => shop Broadcast","user (10%) => shop"],"datasets":[{"label":"Spark small Dataframe join","data":[2547,1113]},{"label":"Spark small RDD join","data":[836,2054]}]}
+        "broadcast_join_10": {"labels":["user (10%) => shop Broadcast","user (10%) => shop"],"datasets":[{"label":"Spark small Dataframe join","data":[2547,1113]},{"label":"Spark small RDD join","data":[836,2054]}]},
+        "space_efficiency": {"labels":["Purchase table size in memory (MB)"],"datasets":[{"label":"RDD","data":[1110.7]},{"label":"Dataframe","data":[231.8]}]},
     }
 
     window.onload = function () {
@@ -215,13 +216,37 @@
 
     <h2>RDD vs DataFrame</h2>
     Dataframe is spark new shiny api. Dataframes use Catalyst, a query optimizer with code generations.<br/>
-    Spark analyse your operations and builds a tree, generating code on the fly. It allows spark to be smart and re-order operation if needed (filter will be applied before joins etc.)<br/>
-    RDD are a now a lower level of abstraction and should be used only when Dataframe can't be used, or in specific case like joins (see below).<br/>
+    Spark analyse your operations and builds a tree containing all your stepts, generating code on the fly. It also allows spark to be smart and re-order operations if needed (filter will be applied before joins etc.)<br/>
+    RDD are a now a lower level of abstraction and should be used only when Dataframe can't be used, or in specific case like joins (see below, will change in future versions).<br/>
+
     <h3>Serialization</h3>
-    Dataframes also leverage tungsten, a serialization engine designed to store binary data in a columnar format. It allows byte-level comparison, preventing costly object creation.<br/>
-    It's fast and efficient. Since spark 2.0, default builtin codec are available for case classes, making the use of Dataset (typed api) easy and efficient.<br/>
+    Java Objects consume a lot of memory. Typically, a String will use:
+    <ul>
+        <li>8(mark word) + 4(klass pointer) = 12 bytes for the header</li>
+        <li>8 bytes for the hashCode</li>
+        <li>8 bytes for the char[] array reference</li>
+        <li>4 bytes for the char[] array lenght</li>
+        <li>and finally 2 bytes per char in the string</li>
+    </ul>
+    <h4>Dataframe</h4>
+    To solve this issue, Dataframes use Tungsten, a serialization engine designed to store binary data. It allows byte-level comparison, preventing costly object creation.<br/>
+    All operations manipulating columns will beneficiate from Tungsten. Transformation/Closure operations (.map(...), .filter(row => ...) etc.) will trigger an expensive Ser/Deser step.
+    <h4>Typed Dataset</h4>
+    Since spark 2.0, default builtin codec are available for case classes, making the use of Dataset (typed api) easier.<br/>
+    However, this api will have to serialize/deserialize Java object, loosing Dataframe ability to mutate column in a very efficient way.<br/>
     Custom encoders can be built to provide serialization for non-supported type.<br/>
+    <h4>RDD</h4>
     When RDD are used, serialization speed can be improved <a href="http://spark.apache.org/docs/latest/tuning.html#data-serialization">using Kryo format</a>. <br/>
+
+    <h3>Space efficiency</h3>
+    Here is a simple example of space efficiency, simply storing data in memory:
+    <pre><code>
+    spark.sparkContext.cassandraTable(DataLoader.Model.ks, DataLoader.Model.purchaseTable).cache().count()
+    //VS
+    spark.read.cassandraFormat(DataLoader.Model.purchaseTable, DataLoader.Model.ks).load().cache().count()
+    </code></pre>
+
+    <div class="canvasContainer"><canvas class="_canvas" data-name="space_efficiency"></canvas></div>
 
     <h3>Switching from Dataframe to RDD</h3>
     Switching from one to another has a cost. It'll change serialization from tungsten to RDD, and also break spark Dataframe lineage, preventing potential optimization.
@@ -269,6 +294,9 @@
     </div>
     <div class="alert alert-info" role="alert">
         Continuous paging clearly speeds up full scan. Make sure you <a href="https://www.datastax.com/dev/blog/dse-continuous-paging-tuning-and-support-guide">read this post before enabling it</a>.
+    </div>
+    <div class="alert alert-info" role="alert">
+        RDD and DF are similar especially since we use a .map() operation (we just want to compare C* read time, not DF operation)
     </div>
 
     <div class="alert alert-warning" role="alert">
@@ -344,7 +372,7 @@
 
     <h2>Joins</h2>
     <h3>Joining small dataset</h3>
-    <h4>Dataset</h4>
+    <h4>Dataframe</h4>
     Spark usually pick a SortMergeJoin to perform joins. However, if the data being joined is small enough, it'll use a broadcast join.<br/>
     By doing so it'll first fetch the data and then send it once to each executor, saving unecessary calls to Cassandra. The threshold is delimited by
     <pre><code>spark.sql.autoBroadcastJoinThreshold = 10M</code></pre>
@@ -452,6 +480,9 @@
     Result with a 5 nodes cluster, RF 3, 1 table with 100000 users joining with and avg of 10 purchases  (purchase table with 10 000 000 row, select only 10% of the table)
     <div class="canvasContainerBig"><canvas class="_canvas" data-name="join_cardinality_10"></canvas></div>
     Continuous paging on: Result with a 5 nodes cluster, RF 3, 1 table with 1 000 000 users with and avgiv>
+    <div class="alert alert-info" role="alert">
+        There is no difference here between mapper and non-mapper scan because we only count the number of rows. It would have been worse if a .map() operation was triggered.
+    </div>
 
     //TODO mettre a jour les snippet + graph
 

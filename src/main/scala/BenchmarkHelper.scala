@@ -19,7 +19,7 @@ case class Measure(labels: Seq[String], datasets: Seq[Dataset])
 object BenchmarkHelper {
 
   def spark = SparkSession.builder
-    //.master("local[2]")
+    .master("local[2]")
     .appName("testStructured")
     //.config("spark.cassandra.connection.factory", "CustomConnectionFactory")
     .getOrCreate()

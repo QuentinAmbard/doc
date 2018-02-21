@@ -4,6 +4,8 @@ import sbtassembly.PathList
 //dse spark-submit --class DataLoader doc-assembly-0.1.jar 1000 1000000 20
 //dse spark-submit --executor-memory=6g --class BenchmarkJoins doc-assembly-0.1.jar 3
 //dse spark-submit --executor-memory=6g --conf spark.dse.continuous_paging_enabled=true --class BenchmarkJoins doc-assembly-0.1.jar 3
+//dse spark-submit --executor-memory=6g --class BenchmarkSpaceEfficiency doc-assembly-0.1.jar 3
+//dse spark-submit --executor-memory=6g --class BenchmarkDataframe doc-assembly-0.1.jar 3
 
 
 

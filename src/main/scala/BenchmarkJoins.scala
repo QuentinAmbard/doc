@@ -40,14 +40,14 @@ object BenchmarkJoins {
     val userJoinPurchaseDF = TimeitUtils.timeIt(timeit) {
       val purchases = spark.read.cassandraFormat(purchaseTable, DataLoader.Model.ks).load()
       val users = spark.read.cassandraFormat(userTable, DataLoader.Model.ks).load()
-      val joinDF = users.joinWith(purchases, purchases("user_id") === users("user_id"))
+      val joinDF = users.join(purchases, purchases("user_id") === users("user_id"))
       println(joinDF.explain)
       assert(count == joinDF.count())
     }
     val purchaseJoinUserDF = TimeitUtils.timeIt(timeit) {
       val purchases = spark.read.cassandraFormat(purchaseTable, DataLoader.Model.ks).load()
       val users = spark.read.cassandraFormat(userTable, DataLoader.Model.ks).load()
-      val joinDF = purchases.joinWith(users, purchases("user_id") === users("user_id"))
+      val joinDF = purchases.join(users, purchases("user_id") === users("user_id"))
       println(joinDF.explain)
       assert(count == joinDF.count())
     }
@@ -59,14 +59,14 @@ object BenchmarkJoins {
     val userJoinPurchaseDS = TimeitUtils.timeIt(timeit) {
       val purchases = spark.read.cassandraFormat(purchaseTable, DataLoader.Model.ks).load().as[Purchase]
       val users = spark.read.cassandraFormat(userTable, DataLoader.Model.ks).load().as[User]
-      val joinDS = users.joinWith(purchases, purchases("user_id") === users("user_id"))
+      val joinDS = users.join(purchases, purchases("user_id") === users("user_id"))
       println(joinDS.explain)
       assert(count == joinDS.count())
     }
     val purchaseJoinUserDS = TimeitUtils.timeIt(timeit) {
       val purchases = spark.read.cassandraFormat(purchaseTable, DataLoader.Model.ks).load().as[Purchase]
       val users = spark.read.cassandraFormat(userTable, DataLoader.Model.ks).load().as[User]
-      val joinDS = purchases.joinWith(users, purchases("user_id") === users("user_id"))
+      val joinDS = purchases.join(users, purchases("user_id") === users("user_id"))
       println(joinDS.explain)
       assert(count == joinDS.count())
     }
