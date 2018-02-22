@@ -68,6 +68,9 @@
         "broadcast_join": {"labels":["user => shop Broadcast","user => shop"],"datasets":[{"label":"Spark small Dataframe join","data":[5814,11443]},{"label":"Spark small RDD join","data":[2906,19692]}]},
         "broadcast_join_10": {"labels":["user (10%) => shop Broadcast","user (10%) => shop"],"datasets":[{"label":"Spark small Dataframe join","data":[2547,1113]},{"label":"Spark small RDD join","data":[836,2054]}]},
         "space_efficiency": {"labels":["Purchase table size in memory (MB)"],"datasets":[{"label":"RDD","data":[1110.7]},{"label":"Dataframe","data":[231.8]}]},
+        "rdd_dataframe": {"labels":["RDD","Dataframe","Dataset"],"datasets":[{"label":"sum (max purchase per user)","data":[86095,86062,82245]},{"label":"max purchase per user","data":[135185,83363,0]},{"label":"to lowercase","data":[28040,22077,21830]},{"label":"UDF concat","data":[18417,23909,19949]}]}
+
+
     }
 
     window.onload = function () {
@@ -251,6 +254,10 @@
     <h3>Switching from Dataframe to RDD</h3>
     Switching from one to another has a cost. It'll change serialization from tungsten to RDD, and also break spark Dataframe lineage, preventing potential optimization.
     //TODO: add graph to check the cost of this operation.
+
+    <h3>Speed</h3>
+    The <a href="https://github.com/QuentinAmbard/doc/blob/master/src/main/scala/BenchmarkDataframe.scala">following operations</a> have been tested against RDD, Dataframe and typed Dataset:
+    <div class="canvasContainer"><canvas class="_canvas" data-name="rdd_dataframe"></canvas></div>
 
 
     <h2>Cassandra Read & Write throughput - data locality</h2>
@@ -467,14 +474,15 @@
     <pre><code>
     val purchases = spark.read.cassandraFormat(purchaseTable, DataLoader.Model.ks).load()
     val users = spark.read.cassandraFormat(userTable, DataLoader.Model.ks).load()
-    val joinDF = users.joinWith(purchases, purchases("user_id") === users("user_id"))
+    val joinDF = users.join(purchases, purchases("user_id") === users("user_id"))
     </code></pre>
     <h5>Dataset joins</h5>
     <pre><code>
     val purchases = spark.read.cassandraFormat(purchaseTable, DataLoader.Model.ks).load().as[Purchase]
     val users = spark.read.cassandraFormat(userTable, DataLoader.Model.ks).load().as[User]
-    val joinDS = users.joinWith(purchases, purchases("user_id") === users("user_id"))
+    val joinDS = users.join(purchases, purchases("user_id") === users("user_id"))
     </code></pre>
+    <a href="https://github.com/QuentinAmbard/doc/blob/master/src/main/scala/BenchmarkJoins.scala">Full code</a><br/>
     Result with a 5 nodes cluster, RF 3, 1 table with 1 000 000 users with and avg of 10 purchases,  (purchase table with 10 000 000 row, full table scan of both users and purchases)
     <div class="canvasContainerBig"><canvas class="_canvas" data-name="join_cardinality"></canvas></div>
     Result with a 5 nodes cluster, RF 3, 1 table with 100000 users joining with and avg of 10 purchases  (purchase table with 10 000 000 row, select only 10% of the table)

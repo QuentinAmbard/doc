@@ -32,7 +32,7 @@ class TypedMaxLong[IN](val f: IN => Long) extends Aggregator[IN, Long, Long] {
   }
 }
 
-case class Purchase1(user_id: Long, price: Int)
+case class Purchase1(item: String, price: Int)
 
 case class User1(user_id: Long, firstname: String, lastname: String)
 
@@ -47,56 +47,50 @@ object BenchmarkDataframe {
 
   def main(args: Array[String]) = {
     if (args.length > 0) timeit = args(0).toInt
-    val measure = Measure(Seq(s"group by max", s"sum(group by max)", "lowercase"), Seq(sumOfMaxPurchasePerUser(), sumOfMaxPurchasePerUser(), lowercase(), udfConcat()))
+    //Warmup
+    spark.sparkContext.cassandraTable(DataLoader.Model.ks, DataLoader.Model.purchaseTable).count()
+    val measure = Measure(Seq(s"RDD", s"Dataframe", "Dataset"), Seq(sumOfMaxPurchasePerUser(), maxPurchasePerItem(), lowercase(), udfConcat()))
     println(Json.mapper.writeValueAsString(measure))
     spark.stop()
   }
 
 
-  private def maxPurchasePerUser() = {
+  private def maxPurchasePerItem() = {
     val maxPriceRDD = TimeitUtils.timeIt(timeit) {
-      val purchases: RDD[(String, CassandraRow)] = spark.sparkContext.cassandraTable(DataLoader.Model.ks, DataLoader.Model.purchaseTable).keyBy(u => u.getString("user_id"))
-      val maxs = purchases.aggregateByKey(Array[Any](0, null, null, null))((max, r) => {
-        if (r.getInt("price") > max(0).asInstanceOf[Int]) {
-          max(0) = r.getInt("price")
-          max(1) = r.getString("purchase_id")
-          max(2) = r.getString("user_id")
-          max(3) = r.getString("item")
-        }
-        max
-      }, (max1, max2) => if (max1(0).asInstanceOf[Int] > max2(0).asInstanceOf[Int]) max1 else max2)
+      val purchases: RDD[(String, (Int, Int, String))] = spark.sparkContext.cassandraTable(DataLoader.Model.ks, DataLoader.Model.purchaseTable)
+          .map(r => (r.getString("item").substring(0,2), (r.getInt("user_id"),r.getInt("price"),r.getString("item"))))
+      val maxs = purchases.reduceByKey((max, r) => if (r._2 > max._2) r else max)
       val maxCount = maxs.collect().length
-      println(s"lowercase $maxCount")
+      println(s"maxPurchasePerFirstLetter $maxCount")
     }
     import org.apache.spark.sql.functions._
     val maxPriceDataframe = TimeitUtils.timeIt(timeit) {
       val maxCount = spark.read.cassandraFormat(DataLoader.Model.purchaseTable, DataLoader.Model.ks).load().select("user_id", "purchase_id", "item", "price")
-        .groupBy("user_id").agg(max("price")).collect().length
-      println(s"lowercase $maxCount")
+          .withColumn("item", substring($"item",0,2)).groupBy("item").agg(max("price")).collect().length
+      println(s"maxPurchasePerFirstLetter $maxCount")
     }
 
-    Dataset("max purchase per user", Seq(maxPriceRDD, maxPriceDataframe))
+    Dataset("max purchase per item", Seq(maxPriceRDD, maxPriceDataframe,0))
   }
 
   private def sumOfMaxPurchasePerUser() = {
     val maxPriceRDD = TimeitUtils.timeIt(timeit) {
-      val purchases: RDD[(String, CassandraRow)] = spark.sparkContext.cassandraTable(DataLoader.Model.ks, DataLoader.Model.purchaseTable).select("user_id", "price").keyBy(u => u.getString("user_id"))
-      val maxs = purchases.aggregateByKey(0)((max, r) => {
-        Math.max(r.getInt("price"), max)
-      }, (max1, max2) => Math.max(max1, max2))
-      val max = maxs.aggregate(0)((sum, max) => sum + max._2, (sum1, sum2) => sum1 + sum2)
+      val purchases: RDD[(String, Int)] = spark.sparkContext.cassandraTable(DataLoader.Model.ks, DataLoader.Model.purchaseTable).select("item", "price")
+        .map(r => (r.getString("item").substring(0,2), r.getInt("price")))
+      val maxs = purchases.reduceByKey((max, r) => Math.max(max,r))
+      val max = maxs.aggregate(0)((sum, max) => sum + max._2, (max1, max) => max1 + max)
       println(s"max=$max")
     }
     import org.apache.spark.sql.functions._
     import spark.sqlContext.implicits._
     val maxPriceDataframe = TimeitUtils.timeIt(timeit) {
-      val grouped: DataFrame = spark.read.cassandraFormat(DataLoader.Model.purchaseTable, DataLoader.Model.ks).load().select("user_id", "price").groupBy("user_id").agg(max("price") as "max")
-      grouped.select(sum("max")).show()
+      val maxCount = spark.read.cassandraFormat(DataLoader.Model.purchaseTable, DataLoader.Model.ks).load().select("item", "price")
+        .withColumn("item", substring($"item",0,2)).groupBy("item").agg(max("price") as "max").select(sum("max")).show()
     }
 
     val maxPriceDataset = TimeitUtils.timeIt(timeit) {
-      val ds: sql.Dataset[Purchase1] = spark.read.cassandraFormat(DataLoader.Model.purchaseTable, DataLoader.Model.ks).load().select("user_id", "price").as[Purchase1]
-      val maxs: (Long, Long) = ds.groupByKey(_.user_id).agg(typedExtended.max(_.price)).reduce((a, b) => (0, a._2 + b._2))
+      val ds: sql.Dataset[Purchase1] = spark.read.cassandraFormat(DataLoader.Model.purchaseTable, DataLoader.Model.ks).load().select("item", "price").as[Purchase1]
+      val maxs: (String, Long) = ds.map(p => (p.item.substring(0,2), p.price)).groupByKey(_._1).agg(typedExtended.max(_._2)).reduce((a, b) => ("", a._2 + b._2))
       println(s"maxs=$maxs")
     }
     Dataset("sum (max purchase per user)", Seq(maxPriceRDD, maxPriceDataframe, maxPriceDataset))

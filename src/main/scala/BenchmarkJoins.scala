@@ -28,9 +28,10 @@ object BenchmarkJoins {
     val joinSpanBySamePartitionerData: Dataset = joinByKeySpanBySamePartitioner(count, userTable, purchaseTable)
     val sparkJoinDSData: Dataset = sparkDSJoin(count, userTable, purchaseTable)
     val sparkJoinDFData: Dataset = sparkDFJoin(count, userTable, purchaseTable)
+    val sparkWithJoinDFData: Dataset = sparkDFWithJoin(count, userTable, purchaseTable)
 
     val measure = Measure(Seq(s"$userTable => $purchaseTable", s"$purchaseTable => $userTable"), Seq(joinWithCassandraTableData, joinWithCassandraTableMapperData,
-      joinKeyByData, joinKeyBySamePartitionerData, joinSpanBySamePartitionerData, sparkJoinDSData, sparkJoinDFData))
+      joinKeyByData, joinKeyBySamePartitionerData, joinSpanBySamePartitionerData, sparkJoinDSData, sparkJoinDFData,sparkWithJoinDFData))
     println(Json.mapper.writeValueAsString(measure))
     measure
   }
@@ -52,6 +53,25 @@ object BenchmarkJoins {
       assert(count == joinDF.count())
     }
     Dataset("Spark Dataframe Join", Seq(userJoinPurchaseDF, purchaseJoinUserDF))
+  }
+
+  private def sparkDFWithJoin(count: Long, userTable: String, purchaseTable: String) = {
+    println("Spark Dataframe JoinWith")
+    val userJoinPurchaseDF = TimeitUtils.timeIt(timeit) {
+      val purchases = spark.read.cassandraFormat(purchaseTable, DataLoader.Model.ks).load()
+      val users = spark.read.cassandraFormat(userTable, DataLoader.Model.ks).load()
+      val joinDF = users.joinWith(purchases, purchases("user_id") === users("user_id"))
+      println(joinDF.explain)
+      assert(count == joinDF.count())
+    }
+    val purchaseJoinUserDF = TimeitUtils.timeIt(timeit) {
+      val purchases = spark.read.cassandraFormat(purchaseTable, DataLoader.Model.ks).load()
+      val users = spark.read.cassandraFormat(userTable, DataLoader.Model.ks).load()
+      val joinDF = purchases.joinWith(users, purchases("user_id") === users("user_id"))
+      println(joinDF.explain)
+      assert(count == joinDF.count())
+    }
+    Dataset("Spark Dataframe JoinWith", Seq(userJoinPurchaseDF, purchaseJoinUserDF))
   }
 
   private def sparkDSJoin(count: Long, userTable: String, purchaseTable: String) = {
