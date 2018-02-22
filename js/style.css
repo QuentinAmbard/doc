@@ -1,0 +1,27 @@
+pre {
+    background-color: #f7f7f7;
+}
+code {
+    font-size: 12px !important;
+}
+h2 {
+    font-weight: bold;
+    margin-top: 30px;
+}
+h3 {
+    font-size: 1.3rem;
+    color: #f09a34;
+}
+h4 {
+    font-weight: bold;
+    font-size: 1.1rem;
+}
+
+.canvasContainer {
+    height: 300px;
+    width: 500px;
+}
+.canvasContainerBig {
+    height: 500px;
+    width: 1000px;
+}

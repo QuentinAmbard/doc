@@ -19,8 +19,9 @@ case class Measure(labels: Seq[String], datasets: Seq[Dataset])
 object BenchmarkHelper {
 
   def spark = SparkSession.builder
-    .master("local[2]")
-    .appName("testStructured")
+    //.master("local[2]")
+    //.config("spark.sql.shuffle.partitions", "400")
+    .appName("test_spark")
     //.config("spark.cassandra.connection.factory", "CustomConnectionFactory")
     .getOrCreate()
 }

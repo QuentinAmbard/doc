@@ -6,7 +6,7 @@ import sbtassembly.PathList
 //dse spark-submit --executor-memory=6g --conf spark.dse.continuous_paging_enabled=true --class BenchmarkJoins doc-assembly-0.1.jar 3
 //dse spark-submit --executor-memory=6g --class BenchmarkSpaceEfficiency doc-assembly-0.1.jar 3
 //dse spark-submit --executor-memory=6g --class BenchmarkDataframe doc-assembly-0.1.jar 3
-
+//dse spark-submit --executor-memory=6g --class SimpleSparkStreaming doc-assembly-0.1.jar localhost 9999 2 false true
 
 
 version := "0.1"
@@ -21,6 +21,7 @@ libraryDependencies ++= Seq(
 
   "org.apache.spark" %% "spark-core"      % sparkVersion % "provided",
   "org.apache.spark" %% "spark-sql"       % sparkVersion % "provided",
+  "org.apache.spark" %% "spark-streaming" % sparkVersion % "provided",
   "com.thedeanda" % "lorem" % "2.1"
 
 )

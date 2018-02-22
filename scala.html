@@ -7,41 +7,50 @@
         crossorigin="anonymous"></script>
 <script src="./js/bootstrap.min.js" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl"
         crossorigin="anonymous"></script>
+<link rel="stylesheet" href="./js/style.css">
 
 
 <div class="container">
     <h1>Scala for spark</h1>
     <h2>Introduction</h2>
     The following guide is a short introduction of Scala for spark.<br/>
-    Scala runs on the jvm. To know which scala version you should use, check the scala version used for your spark verison.<br/>
+    Scala runs on the jvm. To know which scala version you should use, check the scala version used for your spark version.<br/>
     Maven or sbt can be used to manage dependencies and build.<br/>
-    The following repository contains examples to quickly start a new project:
-    //TODO add github example repo
+    The following repository contains examples to quickly start a new project with SBT, Maven or Gradle:
+    <a href="https://github.com/datastax/SparkBuildExamples">https://github.com/datastax/SparkBuildExamples</a>
+    <h2></h2>
+    Twitter scala school is a very good resource to easily learn Scala: <a href="https://twitter.github.io/scala_school/">https://twitter.github.io/scala_school/</a>
     <h2>val and var and primitive</h2>
-
+    <a href="https://github.com/QuentinAmbard/doc/blob/master/src/main/scala/tutorial/ScalaTutorial.scala">https://github.com/QuentinAmbard/doc/blob/master/src/main/scala/tutorial/ScalaTutorial.scala</a>
     <h2>class and case class</h2>
-
+    <a href="https://github.com/QuentinAmbard/doc/blob/master/src/main/scala/tutorial/CaseClassTutorial.scala">https://github.com/QuentinAmbard/doc/blob/master/src/main/scala/tutorial/CaseClassTutorial.scala</a>
     <h2>companion object</h2>
-
+    <a href="https://github.com/QuentinAmbard/doc/blob/master/src/main/scala/tutorial/SingletonTutorial.scala">https://github.com/QuentinAmbard/doc/blob/master/src/main/scala/tutorial/SingletonTutorial.scala</a>
     <h2>pattern matching</h2>
-
+    <a href="https://github.com/QuentinAmbard/doc/blob/master/src/main/scala/tutorial/PatternMatchingTutorial.scala">https://github.com/QuentinAmbard/doc/blob/master/src/main/scala/tutorial/PatternMatchingTutorial.scala</a>
     <h2>Option</h2>
-
+    <a href="https://github.com/QuentinAmbard/doc/blob/master/src/main/scala/tutorial/OptionTutorial.scala">https://github.com/QuentinAmbard/doc/blob/master/src/main/scala/tutorial/OptionTutorial.scala</a>
     <h2>Try</h2>
-
+    <a href="https://github.com/QuentinAmbard/doc/blob/master/src/main/scala/tutorial/TryTutorial.scala">https://github.com/QuentinAmbard/doc/blob/master/src/main/scala/tutorial/TryTutorial.scala</a>
     <h2>implicit</h2>
-
+    <a href="https://github.com/QuentinAmbard/doc/blob/master/src/main/scala/tutorial/ImplicitTutorial.scala">https://github.com/QuentinAmbard/doc/blob/master/src/main/scala/tutorial/ImplicitTutorial.scala</a>
+    Keep things simple and easy to read. Avoid using complexe/hidden implicits. Avoid operator overloading, always prefer readability vs brevity.
     <h2>Mutable vs immutable</h2>
-
+    Immutable object often means recreating object (for example with .copy(...)). Although perfectly valid in a functional approach, creating a lot of object in the "hot path" has a high cost in the JVM performance and should be avoided.
     <h2>Collections</h2>
     Coming from java, scala collection can be tricky.<br/>
     2 implementations exist for most of the collections: mutable and immutable.<br/>
     It's important to understand the cost of accessing / adding an element to a collection. For example, accessing an element in a List has a cost in O(n).<br/>
-    Array[String] is the
-    If you need to app
-    Working with spark, ArrayBuffer are often used. However spark provides a more efficient CompactBuffer
-    List are commonly used
+    Working with spark, ArrayBuffer are often used. Internally, spark uses a more efficient CompactBuffer for some RDD operations.
+    <a href="https://github.com/QuentinAmbard/doc/blob/master/src/main/scala/tutorial/CollectionTutorial.scala">https://github.com/QuentinAmbard/doc/blob/master/src/main/scala/tutorial/CollectionTutorial.scala</a>
 
+    <br/>
+    <br/>
+    For the brave: <a href="https://thedet.wordpress.com/2012/04/28/functors-monads-applicatives-can-be-so-simple/">Functors and monads</a>
+    <br/>
 
-
+    <br/>
+    <br/>
+    <br/>
+    <br/>
 </div>

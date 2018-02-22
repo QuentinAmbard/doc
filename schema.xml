@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<schema name="autoSolrSchema" version="1.5">
+  <types>
+    <fieldType class="org.apache.solr.schema.TextField" name="TextField">
+      <analyzer>
+        <tokenizer class="solr.StandardTokenizerFactory"/>
+        <filter class="solr.LowerCaseFilterFactory"/>
+      </analyzer>
+    </fieldType>
+    <fieldType class="org.apache.solr.schema.TrieIntField" name="TrieIntField"/>
+  </types>
+  <fields>
+    <field docValues="true" indexed="true" multiValued="false" name="enum" stored="true" type="org.apache.solr.schema.StrField"/>
+    <field docValues="true" indexed="true" multiValued="false" name="pk" stored="true" type="TrieIntField"/>
+  </fields>
+  <uniqueKey>pk</uniqueKey>
+</schema>
+
