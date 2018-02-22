@@ -116,10 +116,10 @@ object BenchmarkDataframe {
     }
 
     import org.apache.spark.sql.functions._
-    val concat = udf[String, Int, Int, String]((user_id, price, item) => s"$user_id-$price-$item")
+    val concat = udf[String, Int, Long, String]((user_id, price, item) => s"$user_id-$price-$item")
     val concatDataframe = TimeitUtils.timeIt(timeit) {
       val userCount = purchases
-        .withColumn("result", concat($"user_id", $"price", $"item"))
+        .withColumn("result", concat($"user_id", $"price", $"item")).drop("user_id", "price", "item")
         .rdd.count()
       println(s"concat $userCount")
     }

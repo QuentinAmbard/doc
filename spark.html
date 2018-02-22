@@ -280,7 +280,12 @@
 
     <h3>Switching from Dataframe to RDD</h3>
     Switching from one to another has a cost. It'll change serialization from tungsten to RDD, and also break spark Dataframe lineage, preventing potential optimization.
-    //TODO: add graph to check the cost of this operation.
+    <pre><code>
+        spark.createDataFrame(purchases, new StructType()
+          .add(StructField("id", StringType, true))
+          .add(StructField("val1", DoubleType, true))
+          .add(StructField("val2", DoubleType, true)))
+    </code></pre>
 
     <h3>Speed</h3>
     The <a href="https://github.com/QuentinAmbard/doc/blob/master/src/main/scala/BenchmarkDataframe.scala">following operations</a> have been tested against RDD, Dataframe and typed Dataset against a C* table of 200 000 000 rows. <br/>
@@ -448,8 +453,7 @@
     <h3>Normal joins</h3>
     <h4>RDD joins</h4>
     Joins can be costly. If the 2 RDD being joins aren't sharing the same partitioner, a shuffle will be require to distribute the key to the same partitions.<br/>
-    To prevent that, a common partitioner can be used. Be aware that the following operation will remove the partitioner.<br/>
-    //TODO: add operation table
+    To prevent that, a common partitioner can be used. Partitioner aren't preserved by any transformation operation.<br/>
 
     <br/>
     To join 1 RDD with a non-cassandra RDD, the connector allows you to use .applyPartitionerFrom(otherRDD). All Partition Keys columns must also be present in the keys of the target RDD.
@@ -522,13 +526,20 @@
         There is no difference here between mapper and non-mapper scan because we only count the number of rows. It would have been worse if a .map() operation was triggered.
     </div>
 
-    //TODO mettre a jour les snippet + graph
+    <h2>Dataframe vs SparkSQL</h2>
+    SparkSQL is easy to read and will result in the same operation as standar Dataframe operation. UDF can also be registered to be accessible from a SparkSQL query.<br/>
+
+    <pre><code>
+    df.createOrReplaceTempView("myTable")
+    spark.sqlContext.udf.register("strLen", (s: String) => s.length())
+
+    </code></pre>
 
     <h2>Spark asynchronous process</h2>
     Every row inside each spark core is processed in sequential order.<br/>
     To increase parralellism, we usually increase the number of core in each executor.<br/>
     However some long operation (query an external database or webervice) could benefit to be run asynchronously.<br/>
-    The following AsynchRDDHelper.scala can be used as inspiration
+    The following <a href="https://github.com/QuentinAmbard/doc/blob/master/src/main/scala/AsynchRDDHelper.scala">AsynchRDDHelper.scala</a> can be used as inspiration.<br/>
     Exemple of an asynchronous .map():
     <pre><code>
     val value: RDD[String] = myRDD.mapPartitionAsynch(partition => {
@@ -560,7 +571,9 @@
     }
     </code></pre>
 
-    //TODO: equivalent with Dataframe
+    <h2>Dependency injection</h2>
+    Do you really need that in your Spark job? It's often easier to manually build the classes/dependancies.<br/>
+    If no scala-native solution work for you, check <a href="https://github.com/adamw/macwire">MacWire</a>
 
     <h2>Cache vs Persist</h2>
     Use .cache() to avoid re-computing your DAG twice when it forks.<br/>
@@ -617,9 +630,8 @@
         <li>If you are reading from kafka and have a high number of kafka partition, it's probably a good idea to start your microbatches with a coaelesce</li>
         <li>If your streaming job gets too complicated with many small steps and many .cache() operations, your throughput might become extremly low.<br/>
             In this case, it's sometime better to reduce the number of steps and stop developping using "spark-logic".<br/>
-            Instead, in a single .map() operation, you can create a multithreaded operation processing line by line as you would do in a normal batch.<br/>
+            Instead, in a single .map() operation, you can create a <a href="https://github.com/QuentinAmbard/doc/blob/master/src/main/scala/AsynchRDDHelper.scala">multithreaded operation </a>processing line by line as you would do in a normal batch.<br/>
             It's often faster, easier to reason and maintain, especially when you start having tens of final operations with very large DAGS.
-            //TODO: add asynch helper code example
         </li>
     </ul>
     <h3>Before structured streaming</h3>
