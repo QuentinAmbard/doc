@@ -51,7 +51,7 @@ object CollectionTutorial extends App {
 
   map.foreach(keyValueTuple => println(s"key=${keyValueTuple._1},value=$keyValueTuple._2"))
   print("------")
-  map.foreach{case (key, value) => println(s"key=${key},value=$value")}
+  map.foreach{case (key: String, value: Int) => println(s"key=${key},value=$value")}
 
 
 

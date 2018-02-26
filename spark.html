@@ -575,9 +575,9 @@
     Do you really need that in your Spark job? It's often easier to manually build the classes/dependancies.<br/>
     If no scala-native solution work for you, check <a href="https://github.com/adamw/macwire">MacWire</a>
 
-    <h2>Cache vs Persist</h2>
+    <h2>Cache/persist vs Checkpoint</h2>
     Use .cache() to avoid re-computing your DAG twice when it forks.<br/>
-    Used .persist() in long and complex to avoid having to recompute all the lineage if a stage fails.
+    Used checkpoint() in long and complex to avoid having to recompute all the lineage if a stage fails.
 
 
     <h2>Packaging</h2>

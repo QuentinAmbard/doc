@@ -18,7 +18,7 @@ object ImplicitTutorial extends App {
   //Implicit examples:
   val spark = SparkSession.builder.master("local[2]").getOrCreate()
 
-  purchases.printAll() //==>  new RDDPrintFunction(purchases).printAll()
+  // new RDDPrintFunction(purchases).printAll()
 
   //Spark cassandra implicits:
   import com.datastax.spark.connector._
@@ -26,10 +26,12 @@ object ImplicitTutorial extends App {
   //Spark implicits, note that it's from the spark object
   import spark.implicits._
   //CassandraConnector is implicitly passed
-  implicit val connector = CassandraConnector(spark.sparkContext.getConf)
-  val purchases = spark.sparkContext.cassandraTable("test_spark", "purchase").select("user_id", "price", "item")
-  //==> spark.sparkContext.cassandraTable("test_spark", "purchase")(connector, ...Other implicits...).select("user_id", "price", "item")
-
+  {
+    implicit val connector = CassandraConnector(spark.sparkContext.getConf)
+    val purchases = spark.sparkContext.cassandraTable("test_spark", "purchase").select("usr_id", "price", "item")
+    //==> spark.sparkContext.cassandraTable("test_spark", "purchase")(connector, ...Other implicits...).select("user_id", "price", "item")
+    purchases.printAll() //==>
+  }
   val purchasesDF = spark.read.cassandraFormat("purchase", "test_spark").load().select("user_id", "price", "item").groupBy(substring($"item",0,2)).agg(max("price")).rdd.count()
 
 
