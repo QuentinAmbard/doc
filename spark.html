@@ -592,7 +592,30 @@
             &lt;groupId&gt;com.datastax.dse&lt;/groupId&gt;
             &lt;artifactId&gt;dse-spark-dependencies&lt;/artifactId&gt;
             &lt;version&gt;5.1.7&lt;/version&gt;
+            &lt;scope&gt;${dse.scope}&lt;/scope&gt;
         &lt;/dependency&gt;
+
+        ...
+
+        &lt;profiles&gt;
+            &lt;profile&gt;
+                &lt;id&gt;dev&lt;/id&gt;
+                &lt;activation&gt;
+                  &lt;activeByDefault&gt;true&lt;/activeByDefault&gt;
+                &lt;/activation&gt;
+                &lt;properties&gt;
+                &lt;dse.scope&gt;compile&lt;/dse.scope&gt;
+              &lt;/properties&gt;
+            &lt;/profile&gt;
+            &lt;profile&gt;
+                &lt;id&gt;build&lt;/id&gt;
+                &lt;properties&gt;
+                &lt;dse.scope&gt;provided&lt;/dse.scope&gt;
+              &lt;/properties&gt;
+            &lt;/profile&gt;
+        &lt;/profiles&gt;
+
+        //maven clean install -P build
     </code></pre>
     <a href="https://www.datastax.com/dev/blog/spark-application-dependency-management">More detail from Datastax blog post</a>
 
