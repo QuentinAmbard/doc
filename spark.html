@@ -551,6 +551,61 @@
     <a href="http://www.russellspitzer.com/2017/02/27/Concurrency-In-Spark/">Russel Concurrency blog post</a>
 
 
+    <h2>Integration tests & unit testing</h2>
+    The C* table won't be saved in the metastore if the OSS spark is used inside unit tests.<br/>
+    The best way to solve this issue is to manually register them when the session is started:
+    <pre><code>
+        class SparkTest extends FlatSpec with BeforeAndAfterAll {
+
+          override def beforeAll(): Unit = {
+            super.beforeAll()
+            spark = SparkSession.builder
+              .master("local[3]")
+              .appName("Datastax Scala example")
+              .config("spark.cassandra.connection.host", "127.0.0.1")
+              .config("spark.cassandra.auth.username", "cassandra")
+              .config("spark.cassandra.auth.password", "cassandra")
+              .getOrCreate()
+
+            //Register all C* table in spark catalog
+            val keyspace = "keyspae"
+            spark.sql(s"create database if not exists $keyspace")
+            val tables = CassandraConnector(spark.sparkContext.getConf).withSessionDo(session => {
+              import scala.collection.JavaConversions._
+              session.getCluster.getMetadata.getKeyspace(keyspace).getTables.map(_.getName)
+            })
+            tables.foreach(tableName => {
+              spark.sql(s"drop table IF EXISTS $keyspace.$tableName")
+              spark.sql(s"create table IF NOT EXISTS $keyspace.$tableName USING org.apache.spark.sql.cassandra OPTIONS (table='$tableName', keyspace='$keyspace')")
+            })
+            //or run dse client-tool configuration byos-export configuration.properties
+            //add the options to your spark configuration
+            //And include in your CP the byos jar: (cp /opt/dse/dse-6.0.4/resources/spark/client-lib/dse-byos_2.11-6.0.4.jar .)
+
+            //For unit tests (no C*), you should not hit any C* table, and you should manually generate spark table from a local file instead.
+            //For example to generate some json data for the unit test using existing C* row
+            //(do it only once to generate some json data)
+            //spark.sql("select * from keyspace.my_table").coalesce(1).write.json("my_table_test_data.json")
+
+            //And then instead of having to start a C* server, create a C* session and register the table, you can register the json file:
+            spark.sql(s"create table IF NOT EXISTS keyspace.my_table USING json LOCATION 'bets_test_data.json' ")
+
+          }
+
+          override def afterAll {
+            spark.close()
+          }
+
+          "Some test" should "display bet content" in {
+            val data = spark.sql("select * from keyspace.my_table").collect()
+            val results = myservice.transformData(data)
+            //Then do usual tests: assert results === xxxx
+          }
+
+        }
+
+    </code></pre>
+
     <h2>Object singleton</h2>
     Opening resources to an external connection is often expensive and slow. <br/>
     As multiples tasks can run in parrallel in the same JVM, a classic synchronized singleton approach can be used to make sure only 1 instance is created (the holder should be called only once per partition, not per row).<br/>

@@ -17,11 +17,11 @@ val sparkVersion = "2.2.0"
 //val sparkVersion = "2.0.2"
 
 libraryDependencies ++= Seq(
-  "com.datastax.spark" %% "spark-cassandra-connector" % "2.0.7" % "provided",
+  "com.datastax.spark" %% "spark-cassandra-connector" % "2.0.7", // % "provided",
 
-  "org.apache.spark" %% "spark-core"      % sparkVersion % "provided",
-  "org.apache.spark" %% "spark-sql"       % sparkVersion % "provided",
-  "org.apache.spark" %% "spark-streaming" % sparkVersion % "provided",
+  "org.apache.spark" %% "spark-core"      % sparkVersion, // % "provided",
+  "org.apache.spark" %% "spark-sql"       % sparkVersion, // % "provided",
+  "org.apache.spark" %% "spark-streaming" % sparkVersion, // % "provided",
   "com.thedeanda" % "lorem" % "2.1"
 
 )

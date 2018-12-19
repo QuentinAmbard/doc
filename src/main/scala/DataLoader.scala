@@ -26,9 +26,9 @@ object DataLoader {
   val spark = BenchmarkHelper.spark
 
   def main(args: Array[String]) = {
-    val shopNumber = args(0).toInt
-    val usersNumber = args(1).toInt
-    val purchaseNumberPerUser = args(2).toInt
+    //    val shopNumber = args(0).toInt
+    //    val usersNumber = args(1).toInt
+    //    val purchaseNumberPerUser = args(2).toInt
     loadData(shopNumber, usersNumber, purchaseNumberPerUser)
     spark.stop()
   }
@@ -69,9 +69,9 @@ object DataLoader {
     }
     ).saveToCassandra(Model.ks, Model.userTable)
 
-    spark.sparkContext.parallelize(1 to usersNumber).flatMap(user_id => {
+    spark.sparkContext.parallelize(1 to 1000).flatMap(user_id => {
       val lorem = LoremIpsum.getInstance()
-      (1 to r.nextInt(purchaseNumberPerUser)).map(purchase_id => Purchase(user_id, purchase_id, lorem.getWords(2, 4), r.nextInt(100)))
+      (1 to 50744).map(purchase_id => Purchase(user_id, purchase_id, lorem.getWords(2, 4), r.nextInt(100)))
     }
     ).saveToCassandra(Model.ks, Model.purchaseTable)
   }

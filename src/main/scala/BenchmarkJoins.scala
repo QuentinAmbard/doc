@@ -1,10 +1,24 @@
 import com.datastax.spark.connector._
+import com.esotericsoftware.kryo.Kryo
+import org.apache.spark.serializer.KryoRegistrator
+import org.apache.spark.sql
+import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.cassandra._
+import org.apache.spark.sql.types._
 
 
 object BenchmarkJoins {
 
-  val spark = BenchmarkHelper.spark
+  case class Part (partkey: String, name :String, mfgr: String, brand : String, pType: String, size: Int, container: String, retailprice: Float, description: String){
+    def this(args: Array[String]) = this(args(0), args(1), args(2), args(3), args(4), args(5).toInt, args(6), args(7).toFloat, args(7))
+  }
+  case class PartSupp (partkey: String, suppkey :String, availqty: Int, supplyCost: Float, comment: String){
+    def this(args: Array[String]) = this(args(0), args(1), args(2).toInt, args(3).toFloat, args(4))
+  }
+
+
+
+  val spark: SparkSession = BenchmarkHelper.spark
   import spark.implicits._
 
   var timeit = 1
@@ -15,7 +29,9 @@ object BenchmarkJoins {
     println(s"CP value = ${spark.conf.get("spark.dse.continuous_paging_enabled")}")
     println(s"val userTable = $userTable")
     println(s"val userTable10 = $userTable10")
+    spark.sparkContext.requestExecutors(1)
     spark.stop()
+    //spark.sparkContext.parallelize((1 to 100)).repartitionByCassandraReplica("csm", table)
   }
 
 
@@ -31,7 +47,7 @@ object BenchmarkJoins {
     val sparkWithJoinDFData: Dataset = sparkDFWithJoin(count, userTable, purchaseTable)
 
     val measure = Measure(Seq(s"$userTable => $purchaseTable", s"$purchaseTable => $userTable"), Seq(joinWithCassandraTableData, joinWithCassandraTableMapperData,
-      joinKeyByData, joinKeyBySamePartitionerData, joinSpanBySamePartitionerData, sparkJoinDSData, sparkJoinDFData,sparkWithJoinDFData))
+      joinKeyByData, joinKeyBySamePartitionerData, joinSpanBySamePartitionerData, sparkJoinDSData, sparkJoinDFData, sparkWithJoinDFData))
     println(Json.mapper.writeValueAsString(measure))
     measure
   }
